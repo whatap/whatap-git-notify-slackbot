@@ -1,0 +1,14 @@
+name: Git-Slack-Noti
+description: 'Git-Slack-Noti'
+
+inputs:
+  slackBotToken:
+    description: "slack bot token for messaging"
+    required: true
+  slackUserInfoJson:
+    description: "git/slack user info for messaging"
+    required: true
+
+runs:
+  using: 'node20'
+  main: 'index.js'
