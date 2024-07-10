@@ -62,9 +62,7 @@ const createMessageBlock = ({ titleText, prUrl, prTitle, labels }) => {
     fields: [
       {
         type: 'mrkdwn',
-        text: 
-          `●  *PR 제목:*  <${prUrl}|${prTitle}>\n` +
-          `●  *라벨:*  ${labelText}` 
+        text: `• *PR 제목*: <${prUrl}|${prTitle}>\n• *라벨*: ${labelText}`
       },
     ],
   });
