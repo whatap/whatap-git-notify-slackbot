@@ -176,9 +176,9 @@ function main() {
           labels: github.context.payload.pull_request.labels,
         });
 
-        const reviewr = context.payload.review.user.login;
+        const reviewer = context.payload.review.user.login;
         const prOwner = context.payload.pull_request.user.login;
-        if (reviewr === prOwner) return;
+        if (reviewer === prOwner) return;
 
         if (!slackUserInfo[prOwner]) {
           console.log(`[리뷰 등록 단계 메세지 전송 실패] ${prOwner}의 정보가 없습니다.`);
