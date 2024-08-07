@@ -8,7 +8,7 @@ const sendSlackMessage = ({ blocks, channelId, text = '' }) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      Authorization: `Bearer ${slackBotToken}`, // 헤더에 Bearer 토큰 추가
+      Authorization: `Bearer ${slackBotToken}`,
     },
     body: JSON.stringify({
       channel: channelId,
@@ -18,7 +18,7 @@ const sendSlackMessage = ({ blocks, channelId, text = '' }) => {
   })
     .then(async (res) => {
       const response = await res.json();
-      if(res.ok) {
+      if (response.ok) {
         console.log(`[슬랙 메세지 전송 성공]`, response);
       }
     })
@@ -29,20 +29,17 @@ const sendSlackMessage = ({ blocks, channelId, text = '' }) => {
 
 const createMessageBlock = ({ titleText, prUrl, prTitle, labels }) => {
   const blocks = [];
-
-  const labelsLen = labels.length;
   let labelText = '';
 
-  if(labelsLen === 0) {
+  if (labels.length === 0) {
     labelText += "`라벨 없음`";
   } else {
     labels.forEach((label, index) => {
       labelText += "`" + label.name + "`";
-
-      if(index < labelsLen - 1) {
+      if (index < labels.length - 1) {
         labelText += ", ";
       }
-    })
+    });
   }
 
   blocks.push({
@@ -62,14 +59,15 @@ const createMessageBlock = ({ titleText, prUrl, prTitle, labels }) => {
     fields: [
       {
         type: 'mrkdwn',
-        text: `• *PR 제목*: <${prUrl}|${prTitle}>\n• *라벨*: ${labelText}`
+        text: `• *PR 제목*: <${prUrl}|${prTitle}>\n• *라벨*: ${labelText}`,
       },
     ],
   });
+
   return blocks;
 };
 
-function main() {
+async function main() {
   try {
     const slackUserInfoJson = core.getInput('slackUserInfoJson');
     if (!slackUserInfoJson) {
@@ -102,7 +100,7 @@ function main() {
           titleText: '💬 *새로운 댓글이 등록되었어요!*',
           prUrl: context.payload.comment.html_url,
           prTitle: `#${context.payload.issue.number} ${context.payload.issue.title}`,
-          labels: github.context.payload.issue.labels,
+          labels: context.payload.issue.labels,
         });
 
         channelId = slackUserInfo[prOwner].directMessageId;
@@ -111,9 +109,9 @@ function main() {
     } else if (context.eventName === 'pull_request') {
       if (context.payload.action === 'review_requested') {
         const reviewerLogin = process.env.REVIEWER_LOGIN; // REVIEWER_LOGIN 환경 변수에서 가져오기
-        
-        if (!reviewerLogin) {
-          console.log(`[리뷰어 할당 단계] REVIEWER_LOGIN이 설정되지 않았습니다.`);
+
+        if (!reviewerLogin || reviewerLogin === 'none') {
+          console.log(`[리뷰어 할당 단계] 리뷰어 정보를 가져오지 못했습니다.`);
           return;
         }
 
@@ -127,13 +125,13 @@ function main() {
           titleText: '💬 *리뷰어로 할당되었어요!*',
           prUrl: context.payload.pull_request.html_url,
           prTitle: `#${context.payload.pull_request.number} ${context.payload.pull_request.title}`,
-          labels: github.context.payload.pull_request.labels,
+          labels: context.payload.pull_request.labels,
         });
 
         channelId = reviewerInfo.directMessageId;
         sendSlackMessage({ blocks, channelId });
       } else if (context.payload.action === 'closed') {
-        const reviewers = github.context.payload.pull_request.requested_reviewers;
+        const reviewers = context.payload.pull_request.requested_reviewers;
 
         if (reviewers.length === 0) return;
 
@@ -154,7 +152,7 @@ function main() {
             titleText: titleText,
             prUrl: context.payload.pull_request.html_url,
             prTitle: `#${context.payload.pull_request.number} ${context.payload.pull_request.title}`,
-            labels: github.context.payload.pull_request.labels,
+            labels: context.payload.pull_request.labels,
           });
 
           const channelId = reviewerInfo.directMessageId;
@@ -173,7 +171,7 @@ function main() {
           titleText: titleText,
           prUrl: context.payload.review.html_url,
           prTitle: `#${context.payload.pull_request.number} ${context.payload.pull_request.title}`,
-          labels: github.context.payload.pull_request.labels,
+          labels: context.payload.pull_request.labels,
         });
 
         const reviewer = context.payload.review.user.login;
