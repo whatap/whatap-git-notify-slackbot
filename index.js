@@ -1,13 +1,13 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
+const core = require("@actions/core");
+const github = require("@actions/github");
 
-const slackBotToken = core.getInput('slackBotToken');
+const slackBotToken = core.getInput("slackBotToken");
 
-const sendSlackMessage = ({ blocks, channelId, text = '' }) => {
+const sendSlackMessage = ({ blocks, channelId, text = "" }) => {
   fetch(`https://slack.com/api/chat.postMessage`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json; charset=utf-8',
+      "Content-Type": "application/json; charset=utf-8",
       Authorization: `Bearer ${slackBotToken}`,
     },
     body: JSON.stringify({
@@ -23,13 +23,13 @@ const sendSlackMessage = ({ blocks, channelId, text = '' }) => {
       }
     })
     .catch((e) => {
-      console.log('실패', e);
+      console.log("실패", e);
     });
 };
 
 const createMessageBlock = ({ titleText, prUrl, prTitle, labels }) => {
   const blocks = [];
-  let labelText = '';
+  let labelText = "";
 
   if (labels.length === 0) {
     labelText += "`라벨 없음`";
@@ -43,23 +43,49 @@ const createMessageBlock = ({ titleText, prUrl, prTitle, labels }) => {
   }
 
   blocks.push({
-    type: 'section',
+    type: "section",
     fields: [
       {
-        type: 'mrkdwn',
+        type: "mrkdwn",
         text: titleText,
       },
     ],
   });
   blocks.push({
-    type: 'divider',
+    type: "divider",
   });
   blocks.push({
-    type: 'section',
+    type: "rich_text",
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [
+          {
+            type: "text",
+            style: {
+              bold: true,
+            },
+            text: "PR 제목",
+          },
+          {
+            type: "text",
+            text: ": ",
+          },
+          {
+            type: "link",
+            url: prUrl,
+            text: prTitle,
+          },
+        ],
+      },
+    ],
+  });
+  blocks.push({
+    type: "section",
     fields: [
       {
-        type: 'mrkdwn',
-        text: `• *PR 제목*: <${prUrl}|${prTitle}>\n• *라벨*: ${labelText}`,
+        type: "mrkdwn",
+        text: `*라벨* : ${labelText}`,
       },
     ],
   });
@@ -69,35 +95,41 @@ const createMessageBlock = ({ titleText, prUrl, prTitle, labels }) => {
 
 async function main() {
   try {
-    const slackUserInfoJson = core.getInput('slackUserInfoJson');
+    const slackUserInfoJson = core.getInput("slackUserInfoJson");
     if (!slackUserInfoJson) {
-      console.log(`[사용자 정보 읽기 단계] 사용자 정보 json 을 읽을 수 없습니다.`);
+      console.log(
+        `[사용자 정보 읽기 단계] 사용자 정보 json 을 읽을 수 없습니다.`
+      );
       return;
     }
     const slackUserInfo = JSON.parse(slackUserInfoJson);
     const context = github.context;
 
     let blocks = [];
-    let titleText = '';
-    let channelId = '';
+    let titleText = "";
+    let channelId = "";
 
-    if (context.eventName === 'issue_comment') {
-      if (context.payload.action === 'created') {
+    if (context.eventName === "issue_comment") {
+      if (context.payload.action === "created") {
         const commentUser = context.payload.comment.user.login;
         const prOwner = context.payload.issue.user.login;
 
         if (!slackUserInfo[prOwner]) {
-          console.log(`[댓글 등록 단계 메세지 전송 실패] ${commentUser}의 정보가 없습니다.`);
+          console.log(
+            `[댓글 등록 단계 메세지 전송 실패] ${commentUser}의 정보가 없습니다.`
+          );
           return;
         }
 
         if (!slackUserInfo[commentUser]) {
-          console.log(`[댓글 등록 단계 메세지 전송 실패] ${prOwner}의 정보가 없습니다.`);
+          console.log(
+            `[댓글 등록 단계 메세지 전송 실패] ${prOwner}의 정보가 없습니다.`
+          );
           return;
         }
 
         blocks = createMessageBlock({
-          titleText: '💬 *새로운 댓글이 등록되었어요!*',
+          titleText: "💬 *새로운 댓글이 등록되었어요!*",
           prUrl: context.payload.comment.html_url,
           prTitle: `#${context.payload.issue.number} ${context.payload.issue.title}`,
           labels: context.payload.issue.labels,
@@ -106,23 +138,25 @@ async function main() {
         channelId = slackUserInfo[prOwner].directMessageId;
         sendSlackMessage({ blocks, channelId });
       }
-    } else if (context.eventName === 'pull_request') {
-      if (context.payload.action === 'review_requested') {
+    } else if (context.eventName === "pull_request") {
+      if (context.payload.action === "review_requested") {
         const reviewerLogin = process.env.REVIEWER_LOGIN; // REVIEWER_LOGIN 환경 변수에서 가져오기
 
-        if (!reviewerLogin || reviewerLogin === 'none') {
+        if (!reviewerLogin || reviewerLogin === "none") {
           console.log(`[리뷰어 할당 단계] 리뷰어 정보를 가져오지 못했습니다.`);
           return;
         }
 
         const reviewerInfo = slackUserInfo[reviewerLogin];
         if (!reviewerInfo) {
-          console.log(`[리뷰어 할당 단계 메세지 전송 실패] ${reviewerLogin}의 정보가 없습니다.`);
+          console.log(
+            `[리뷰어 할당 단계 메세지 전송 실패] ${reviewerLogin}의 정보가 없습니다.`
+          );
           return;
         }
 
         blocks = createMessageBlock({
-          titleText: '💬 *리뷰어로 할당되었어요!*',
+          titleText: "💬 *리뷰어로 할당되었어요!*",
           prUrl: context.payload.pull_request.html_url,
           prTitle: `#${context.payload.pull_request.number} ${context.payload.pull_request.title}`,
           labels: context.payload.pull_request.labels,
@@ -130,7 +164,7 @@ async function main() {
 
         channelId = reviewerInfo.directMessageId;
         sendSlackMessage({ blocks, channelId });
-      } else if (context.payload.action === 'closed') {
+      } else if (context.payload.action === "closed") {
         const reviewers = context.payload.pull_request.requested_reviewers;
 
         if (reviewers.length === 0) return;
@@ -138,14 +172,16 @@ async function main() {
         reviewers.forEach((reviewer) => {
           const reviewerInfo = slackUserInfo[reviewer.login];
           if (!reviewerInfo) {
-            console.log(`[리뷰 머지 알림 메세지 전송 실패] ${reviewer.login}의 정보가 없습니다.`);
+            console.log(
+              `[리뷰 머지 알림 메세지 전송 실패] ${reviewer.login}의 정보가 없습니다.`
+            );
             return;
           }
 
           if (context.payload.pull_request.merged) {
-            titleText = '📢 *PR이 `Merged` 되었어요!*';
+            titleText = "📢 *PR이 `Merged` 되었어요!*";
           } else {
-            titleText = '📢 *PR이 `Closed` 되었어요!*';
+            titleText = "📢 *PR이 `Closed` 되었어요!*";
           }
 
           blocks = createMessageBlock({
@@ -159,12 +195,12 @@ async function main() {
           sendSlackMessage({ blocks, channelId });
         });
       }
-    } else if (context.eventName === 'pull_request_review') {
-      if (context.payload.action === 'submitted') {
-        if (context.payload.review.state === 'approved') {
-          titleText = '📢 *PR이 `Approved` 되었어요!*';
+    } else if (context.eventName === "pull_request_review") {
+      if (context.payload.action === "submitted") {
+        if (context.payload.review.state === "approved") {
+          titleText = "📢 *PR이 `Approved` 되었어요!*";
         } else {
-          titleText = '💬 *새로운 리뷰가 등록되었어요!*';
+          titleText = "💬 *새로운 리뷰가 등록되었어요!*";
         }
 
         blocks = createMessageBlock({
@@ -179,7 +215,9 @@ async function main() {
         if (reviewer === prOwner) return;
 
         if (!slackUserInfo[prOwner]) {
-          console.log(`[리뷰 등록 단계 메세지 전송 실패] ${prOwner}의 정보가 없습니다.`);
+          console.log(
+            `[리뷰 등록 단계 메세지 전송 실패] ${prOwner}의 정보가 없습니다.`
+          );
           return;
         }
 
