@@ -19,7 +19,7 @@ const sendSlackMessage = ({ blocks, channelId, text = "" }) => {
     .then(async (res) => {
       const response = await res.json();
       if (response.ok) {
-        console.log(`[슬랙 메세지 전송 성공]`, response);
+        console.log(`[슬랙 메세지 전송 성공]: ${channelId} `, response);
       }
     })
     .catch((e) => {
